@@ -18,7 +18,7 @@ cmp --silent $FM_CFG_DIR/server-0/config-plaintext.json $FM_CFG_DIR/server-0/con
 ./scripts/pegin.sh # peg in user
 
 export PEG_IN_AMOUNT=99999
-start_gatewayd
+start_cln_gatewayd
 ./scripts/pegin.sh $PEG_IN_AMOUNT 1 # peg in gateway
 
 #### BEGIN TESTS ####
@@ -63,7 +63,7 @@ PAYMENT_HASH="$(echo $ADD_INVOICE| jq -e -r '.r_hash')"
 $FM_MINT_CLIENT ln-pay $INVOICE
 # Check that ln-gateway has received the ecash notes from the user payment
 # 100,000 sats + 100 sats without processing fee
-LN_GATEWAY_BALANCE="$($FM_GATEWAY_CLI balance $FED_ID | jq -e -r '.balance_msat')"
+LN_GATEWAY_BALANCE="$($FM_GWCLI_CLN balance $FED_ID | jq -e -r '.balance_msat')"
 [[ "$LN_GATEWAY_BALANCE" = "100100000" ]]
 INVOICE_STATUS="$($FM_LNCLI lookupinvoice $PAYMENT_HASH | jq -e -r '.state')"
 [[ "$INVOICE_STATUS" = "SETTLED" ]]

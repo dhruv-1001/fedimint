@@ -55,16 +55,8 @@ export FM_LND_RPC_ADDR="http://localhost:11009"
 export FM_LND_TLS_CERT=$FM_LND_DIR/tls.cert
 export FM_LND_MACAROON=$FM_LND_DIR/data/chain/bitcoin/regtest/admin.macaroon
 
-# Generate gateway config
-export FM_GATEWAY_DATA_DIR=$FM_CFG_DIR/gateway
-export FM_GATEWAY_LISTEN_ADDR="127.0.0.1:8175"
-export FM_GATEWAY_API_ADDR="http://127.0.0.1:8175"
-export FM_GATEWAY_PASSWORD="theresnosecondbest"
-
 export FM_CLN_EXTENSION_LISTEN_ADDRESS="0.0.0.0:8177"
 export FM_GATEWAY_LIGHTNING_ADDR="http://localhost:8177"
-
-mkdir -p $FM_GATEWAY_DATA_DIR
 
 # Define clients
 export FM_LIGHTNING_CLI="lightning-cli --network regtest --lightning-dir=$FM_CLN_DIR"
@@ -72,7 +64,8 @@ export FM_LNCLI="lncli -n regtest --lnddir=$FM_LND_DIR --rpcserver=localhost:110
 export FM_BTC_CLIENT="bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin"
 export FM_MINT_CLIENT="$FM_BIN_DIR/fedimint-cli --workdir $FM_CFG_DIR"
 export FM_MINT_RPC_CLIENT="$FM_BIN_DIR/mint-rpc-client"
-export FM_GATEWAY_CLI="$FM_BIN_DIR/gateway-cli --rpcpassword=theresnosecondbest"
+export FM_GWCLI_CLN="$FM_BIN_DIR/gateway-cli --rpcpassword=theresnosecondbest"
+export FM_GWCLI_LND="$FM_BIN_DIR/gateway-cli --rpcpassword=theresnosecondbest -a https://127.0.0.1:18176"
 export FM_DB_TOOL="$FM_BIN_DIR/dbtool"
 export FM_DISTRIBUTEDGEN="$FM_BIN_DIR/distributedgen"
 
@@ -86,7 +79,8 @@ alias lncli="\$FM_LNCLI"
 alias bitcoin-cli="\$FM_BTC_CLIENT"
 alias mint_client="\$FM_MINT_CLIENT"
 alias mint_rpc_client="\$FM_MINT_RPC_CLIENT"
-alias gateway-cli="\$FM_GATEWAY_CLI"
+alias gwcli-cln="\$FM_GWCLI_CLN"
+alias gwcli-lnd="\$FM_GWCLI_LND"
 alias dbtool="\$FM_DB_TOOL"
 alias distributedgen="\$FM_DISTRIBUTEDGEN"
 

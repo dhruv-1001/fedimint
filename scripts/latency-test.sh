@@ -9,7 +9,7 @@ export PEG_IN_AMOUNT=10000000
 
 source ./scripts/setup-tests.sh $FM_FED_SIZE
 ./scripts/pegin.sh
-start_gatewayd
+start_cln_gatewayd
 
 #### BEGIN TESTS ####
 echo "Running with fed size $FM_FED_SIZE"

@@ -68,7 +68,7 @@ function await_gateway_cln_extension() {
   while ! echo exit | nc localhost 8177; do sleep $FM_POLL_INTERVAL; done
 }
 
-function gw_connect_fed() {
+function gw_cln_connect_fed() {
   # get connection string ... retry in case fedimint-cli command fails
   FM_CONNECT_STR=""
   while [[ $FM_CONNECT_STR = "" ]]
@@ -79,7 +79,25 @@ function gw_connect_fed() {
   done
 
   # get connection string ... retry in case gateway-cli command fails
-  while ! $FM_GATEWAY_CLI connect-fed "$FM_CONNECT_STR"
+  while ! $FM_GWCLI_CLN connect-fed "$FM_CONNECT_STR"
+  do
+    echo "gateway-cli connect-fed failed ... retrying"
+    sleep $FM_POLL_INTERVAL
+  done
+}
+
+function gw_lnd_connect_fed() {
+  # get connection string ... retry in case fedimint-cli command fails
+  FM_CONNECT_STR=""
+  while [[ $FM_CONNECT_STR = "" ]]
+  do
+    FM_CONNECT_STR=$($FM_MINT_CLIENT connect-info | jq -e -r '.connect_info') || true
+    echo "fedimint-cli connect-info failed ... retrying"
+    sleep $FM_POLL_INTERVAL
+  done
+
+  # get connection string ... retry in case gateway-cli command fails
+  while ! $FM_GWCLI_LND connect-fed "$FM_CONNECT_STR"
   do
     echo "gateway-cli connect-fed failed ... retrying"
     sleep $FM_POLL_INTERVAL
@@ -169,13 +187,21 @@ function start_lnd() {
   echo $! >> $FM_PID_FILE
 }
 
-function start_gatewayd() {
-  echo "starting gatewayd"
+function start_cln_gatewayd() {
+  echo "starting cln gatewayd"
   await_gateway_cln_extension
   await_fedimint_block_sync
-  $FM_BIN_DIR/fixtures gatewayd &
-  gw_connect_fed
-  echo "started gatewayd"
+  $FM_BIN_DIR/fixtures gatewayd cln &
+  gw_cln_connect_fed
+  echo "started cln gatewayd"
+}
+
+function start_lnd_gatewayd() {
+  echo "starting lnd gatewayd"
+  await_fedimint_block_sync
+  $FM_BIN_DIR/fixtures gatewayd lnd &
+  gw_lnd_connect_fed
+  echo "started lnd gatewayd"
 }
 
 function start_electrs() {

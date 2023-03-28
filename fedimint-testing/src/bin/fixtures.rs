@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use bitcoincore_rpc::{Client as BitcoinClient, RpcApi};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use fedimint_client::module::gen::{ClientModuleGenRegistry, DynClientModuleGen};
 use fedimint_core::config::load_from_file;
 use fedimint_core::core::LEGACY_HARDCODED_INSTANCE_ID_WALLET;
@@ -29,6 +29,21 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tracing::{error, info};
 use url::Url;
 
+#[derive(ValueEnum, Clone, Debug)]
+enum GatewayNode {
+    Cln,
+    Lnd,
+}
+
+impl ToString for GatewayNode {
+    fn to_string(&self) -> String {
+        match self {
+            GatewayNode::Cln => String::from("cln"),
+            GatewayNode::Lnd => String::from("lnd"),
+        }
+    }
+}
+
 #[derive(Subcommand)]
 enum Cmd {
     // daemons
@@ -40,7 +55,7 @@ enum Cmd {
     AllDaemons,
     Dkg { servers: usize },
     Fedimintd { id: usize },
-    Gatewayd,
+    Gatewayd { node: GatewayNode },
     Federation { start_id: usize, stop_id: usize },
 
     // commands
@@ -124,7 +139,8 @@ async fn await_dkg_complete(waiter_name: &str) -> anyhow::Result<()> {
         if client_json_dir.exists() {
             break;
         }
-        info!("{waiter_name} waiting for dkg ...")
+        info!("{waiter_name} waiting for dkg ...");
+        sleep(Duration::from_secs(1)).await;
     }
     Ok(())
 }
@@ -291,13 +307,32 @@ async fn run_fedimintd(id: usize) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_gatewayd() -> anyhow::Result<()> {
-    let bin_dir = env::var("FM_BIN_DIR")?;
+async fn run_gatewayd(node: GatewayNode) -> anyhow::Result<()> {
+    // TODO: await_fedimint_block_sync
 
-    // TODO: await_fedimint_block_sync()
+    let bin_dir = env::var("FM_BIN_DIR")?;
+    let gateway_env = gateway_env(&node)?;
+    let gateway_dir = gateway_env
+        .get("FM_GATEWAY_DATA_DIR")
+        .ok_or_else(|| anyhow!("FM_GATEWAY_DATA_DIR not found"))?;
+    let listen_addr = gateway_env
+        .get("FM_GATEWAY_LISTEN_ADDR")
+        .ok_or_else(|| anyhow!("FM_GATEWAY_LISTEN_ADDR not found"))?;
+    let api_addr = gateway_env
+        .get("FM_GATEWAY_API_ADDR")
+        .ok_or_else(|| anyhow!("FM_GATEWAY_API_ADDR not found"))?;
+    let password = gateway_env
+        .get("FM_GATEWAY_PASSWORD")
+        .ok_or_else(|| anyhow!("FM_GATEWAY_PASSWORD not found"))?;
+
+    fs::create_dir_all(gateway_dir).await?;
 
     let mut gatewayd = Command::new(format!("{bin_dir}/gatewayd"))
-        .arg("cln")
+        .arg(format!("--data-dir=\"{gateway_dir}\""))
+        .arg(format!("--listen={listen_addr}"))
+        .arg(format!("--api-addr={api_addr}"))
+        .arg(format!("--password={password}"))
+        .arg(node.to_string())
         .spawn()?;
     kill_on_exit(&gatewayd).await?;
     info!("gatewayd started");
@@ -356,6 +391,27 @@ fn fedimint_env(id: usize) -> anyhow::Result<HashMap<String, String>> {
             format!("{cfg_dir}/server-{id}"),
         ),
         ("FM_PASSWORD".into(), format!("pass{id}")),
+    ]))
+}
+
+fn gateway_env(node: &GatewayNode) -> anyhow::Result<HashMap<String, String>> {
+    // Could not port 18175 as it is used by server-0 ui_port
+    let (port, dir_name) = match node {
+        GatewayNode::Cln => (8175, "cln-gateway".to_string()),
+        GatewayNode::Lnd => (18176, "lnd-gateway".to_string()),
+    };
+    let cfg_dir = env::var("FM_CFG_DIR")?;
+    Ok(HashMap::from_iter([
+        (
+            "FM_GATEWAY_DATA_DIR".into(),
+            format!("{cfg_dir}/{dir_name}"),
+        ),
+        ("FM_GATEWAY_LISTEN_ADDR".into(), format!("127.0.0.1:{port}")),
+        (
+            "FM_GATEWAY_API_ADDR".into(),
+            format!("http://127.0.0.1:{port}"),
+        ),
+        ("FM_GATEWAY_PASSWORD".into(), format!("theresnosecondbest")),
     ]))
 }
 
@@ -572,7 +628,7 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Electrs => run_electrs().await.expect("electrs failed"),
         Cmd::Esplora => run_esplora().await.expect("esplora failed"),
         Cmd::Fedimintd { id } => run_fedimintd(id).await.expect("fedimint failed"),
-        Cmd::Gatewayd => run_gatewayd().await.expect("gatewayd failed"),
+        Cmd::Gatewayd { node } => run_gatewayd(node).await.expect("gatewayd failed"),
         Cmd::Dkg { servers } => run_dkg(servers).await.expect("dkg failed"),
         Cmd::Federation { start_id, stop_id } => run_federation(start_id, stop_id)
             .await
