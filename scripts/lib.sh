@@ -188,6 +188,12 @@ function start_esplora() {
   echo $! >> $FM_PID_FILE
 }
 
+function start_fedimintd() {
+  local SERVER_ID
+  SERVER_ID=$1
+  $FM_BIN_DIR/fixtures fedimintd $SERVER_ID
+}
+
 function start_federation() {
   START_SERVER=${1:-0}
   END_SERVER=${2:-$FM_FED_SIZE}

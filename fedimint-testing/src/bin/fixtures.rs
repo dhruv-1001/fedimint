@@ -116,6 +116,19 @@ async fn await_bitcoind_ready(waiter_name: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn await_dkg_complete(waiter_name: &str) -> anyhow::Result<()> {
+    let cfg_dir: PathBuf = env::var("FM_CFG_DIR")?.parse()?;
+    let client_json_dir = cfg_dir.join("client.json");
+
+    loop {
+        if client_json_dir.exists() {
+            break;
+        }
+        info!("{waiter_name} waiting for dkg ...")
+    }
+    Ok(())
+}
+
 async fn await_fedimint_block_sync() -> anyhow::Result<()> {
     await_bitcoind_ready("await_fedimint_block_sync").await?;
     let fedimint_client = fedimint_client().await?;
@@ -252,6 +265,7 @@ async fn run_esplora() -> anyhow::Result<()> {
 async fn run_fedimintd(id: usize) -> anyhow::Result<()> {
     // wait for bitcoin RPC to be ready ...
     await_bitcoind_ready(&format!("fedimint-{id}")).await?;
+    await_dkg_complete(&format!("fedimint-{id}")).await?;
 
     let bin_dir = env::var("FM_BIN_DIR")?;
     let env_vars = fedimint_env(id)?;

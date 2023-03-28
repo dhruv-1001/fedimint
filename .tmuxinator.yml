@@ -17,9 +17,9 @@ windows:
   - main:
       panes:
         - user:
+            - run_dkg
             - source scripts/tmux-user-shell.sh
-  - federation:
-      layout: 3ed7,272x74,0,0{119x74,0,0,54,152x74,120,0[152x17,120,0,55,152x17,120,18,56,152x17,120,36,57,152x20,120,54,58]}
+  - gateways/bitcoind:
       panes:
         - user:
           - # empty user shell
@@ -35,6 +35,15 @@ windows:
         - gateway:
           - start_gatewayd &
           - fg
-        - federation:
-          - run_dkg
-          - start_federation &
+        - placeholder:
+          - # placeholder
+  - federation:
+      panes:
+        - server-0:
+          - start_fedimintd 0
+        - server-1:
+          - start_fedimintd 1
+        - server-2:
+          - start_fedimintd 2
+        - server-3:
+          - start_fedimintd 3
